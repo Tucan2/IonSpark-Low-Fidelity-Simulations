@@ -1,3 +1,7 @@
+"""
+    Please keep in mind that this is very preliminary. Zero clue if this is useful or correct or relavent in any way.
+"""
+
 import numpy as np
 from scipy.integrate import odeint
 import matplotlib.pyplot as plt
@@ -57,4 +61,5 @@ plt.title('Stepwise Ionization of Argon (0D Model)')
 plt.legend()
 plt.grid(True)
 plt.yscale('log')
+
 plt.show()
