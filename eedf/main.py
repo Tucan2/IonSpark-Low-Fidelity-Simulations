@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 def eta_thermionic(E_joules, T_kelvin):
     """
     EEDF model: η(E) = (-4 * π * me * qe / h^3) * E * exp(-E / (kB * T))
-        where qe, h and kB are the elementary charge, Planck constant and Boltzmann constant, respectively, and 𝑚𝑒 and E are the mass and energy of electrons emitted at temperature T.
+        where qe, h and kB are the elementary charge, Planck constant and Boltzmann constant, respectively, and me and E are the mass and energy of electrons emitted at temperature T.
         source: https://dx.doi.org/10.14288/1.0445206 section 1.4 equation 6
     """
     q_e = -e  
