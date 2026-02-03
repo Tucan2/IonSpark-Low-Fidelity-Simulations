@@ -22,5 +22,5 @@ for E_ev in np.arange(0, 2.5, 0.025):
 
 
 plt.xlabel('Energy (eV)')
-plt.ylabel('η(E)')
+plt.ylabel('η(E)@T={T}K')
 plt.show()
