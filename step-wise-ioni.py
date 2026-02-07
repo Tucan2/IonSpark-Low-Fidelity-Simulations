@@ -6,60 +6,51 @@ import numpy as np
 from scipy.integrate import odeint
 import matplotlib.pyplot as plt
 
-# --- Rate Coefficients (m^3/s or m^6/s) and Parameters ---
-# Te: Electron Temperature in eV
-# k: Rate coefficients derived from Arrhenius-type equations (e.g.,)
-def get_rates(Te):
-    # Electron impact ionization Ar + e -> Ar+ + 2e (Direct)
-    k_dir = 1.235e-13 * np.exp(-18.687 / Te) # cm^3/s to m^3/s
-    # Excitation Ar + e -> Ar* + e (Metastable)
-    k_exc = 3.712e-14 * np.exp(-15.06 / Te)
-    # Stepwise Ionization Ar* + e -> Ar+ + 2e
-    k_step = 2.05e-14 * np.exp(-4.95 / Te)
-    # Metastable pooling Ar* + Ar* -> Ar + Ar+ + e
-    k_pool = 6.2e-16 # m^3/s
-    
-    return k_dir*1e-6, k_exc*1e-6, k_step*1e-6, k_pool*1e-6
+# --- 1. System Parameters & Constants ---
+Te = 2.0  # Electron temperature in eV
+ne = 1e16 # Electron density in m^-3 (assumed constant for simplicity)
+N_gas = 3e21 # Neutral argon density (0.1 Torr at 300K)
+E_ex = 11.5 # Excitation energy (ground to metastable)
+E_iz = 15.76 # Ionization energy (ground state)
+E_si = 4.26  # Stepwise ionization energy (15.76 - 11.5)
 
-# --- Differential Equations ---
-def odes(y, t, Te, n_e):
-    Ar, Arm, Arp = y
-    k_dir, k_exc, k_step, k_pool = get_rates(Te)
-    
-    # Rates
-    r_dir = k_dir * n_e * Ar
-    r_exc = k_exc * n_e * Ar
-    r_step = k_step * n_e * Arm
-    r_pool = k_pool * Arm**2
-    
-    # Balance Equations
-    dAr_dt = -r_dir - r_exc + r_pool # Ground state loss
-    dArm_dt = r_exc - r_step - 2*r_pool # Metastable density
-    dArp_dt = r_dir + r_step + r_pool # Ion density
-    
-    return [dAr_dt, dArm_dt, dArp_dt]
+# --- 2. Rate Coefficients (Simplified Arrhenius-like) ---
+# k = A * exp(-E/Te)
+k_ex = 1e-15 * np.exp(-E_ex / Te)  # Ar + e -> Arm + e
+k_si = 1e-13 * np.exp(-E_si / Te)  # Arm + e -> Ar+ + 2e (Stepwise)
+k_dr = 5e-14 * (Te**-0.66)        # Recombination / Losses
 
-# --- Simulation Setup ---
-n_total = 3.3e22 # Density at 1 Torr, 300K (m^-3)
-n_e = 1e16 # Electron density (m^-3)
-Te = 2.0 # Electron Temperature (eV)
-y0 = [n_total, 0, 0] # Initial conditions [Ar, Arm, Arp]
-t = np.linspace(0, 1e-3, 1000) # Time span (s)
+# --- 3. Rate Equation Formulation ---
+def plasma_dynamics(y, t, ne, N_gas, k_ex, k_si, k_dr):
+    n_gs, n_m, n_i = y # Ground, Metastable, Ion
+    
+    # Rate equations (d/dt)
+    # 1. Ground State: Losses to excited/ionized
+    dn_gs_dt = -ne * n_gs * k_ex
+    # 2. Metastable State: Gains from excitation, losses to ionization
+    dn_m_dt = (ne * n_gs * k_ex) - (ne * n_m * k_si) - (k_dr * n_m)
+    # 3. Ion Density: Stepwise ionization + others
+    dn_i_dt = (ne * n_m * k_si) 
+    
+    return [dn_gs_dt, dn_m_dt, dn_i_dt]
 
-# --- Solve ODEs ---
-sol = odeint(odes, y0, t, args=(Te, n_e))
-Ar, Arm, Arp = sol.T
+# --- 4. Simulation Execution ---
+y0 = [N_gas, 0.0, 1e10] # Initial densities
+t = np.linspace(0, 1e-3, 1000) # Time span (seconds)
 
-# --- Plotting ---
-plt.figure(figsize=(10, 6))
-plt.plot(t*1e6, Ar, label='Ar (Ground)')
-plt.plot(t*1e6, Arm, label='Ar* (Metastable)')
-plt.plot(t*1e6, Arp, label='Ar+ (Ion)')
-plt.xlabel('Time ($\mu$s)')
+# Solve ODE
+solution = odeint(plasma_dynamics, y0, t, args=(ne, N_gas, k_ex, k_si, k_dr))
+n_gs, n_m, n_i = solution.T
+
+# --- 5. Plotting Results ---
+plt.figure(figsize=(10,6))
+plt.plot(t*1e6, n_gs, label='Ground State Ar')
+plt.plot(t*1e6, n_m, label='Metastable $Ar_m$')
+plt.plot(t*1e6, n_i, label='Ion $Ar^+$')
+plt.xlabel('Time ($\mu s$)')
 plt.ylabel('Density ($m^{-3}$)')
-plt.title('Stepwise Ionization of Argon (0D Model)')
-plt.legend()
-plt.grid(True)
 plt.yscale('log')
-
+plt.legend()
+plt.title(f'Stepwise Ionization of Argon (Te={Te}eV)')
+plt.grid(True)
 plt.show()
